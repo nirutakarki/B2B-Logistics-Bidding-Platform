@@ -160,3 +160,99 @@ class DriverController extends Controller
         ]);
     }
 }
+
+use App\Models\Driver;
+
+class DriverController extends Controller
+{
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'business_name' => 'nullable|string'
+        ]);
+
+        $driver = Driver::create([
+            'user_id' => $validated['user_id'],
+            'business_name' => $validated['business_name'] ?? null,
+            'status' => 'pending'
+        ]);
+
+        return response()->json([
+            'message' => 'Driver registration submitted.',
+            'driver' => $driver
+        ], 201);
+    }
+
+    public function approve($id)
+    {
+        $driver = Driver::findOrFail($id);
+
+        $driver->update([
+            'status' => 'approved'
+        ]);
+
+        return response()->json([
+            'message' => 'Driver approved successfully.',
+            'driver' => $driver
+        ]);
+    }
+}
+
+use App\Models\Bid;
+use App\Models\Driver;
+use App\Models\Load;
+use Illuminate\Http\Request;
+
+class BidController extends Controller
+{
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'load_id' => 'required|exists:loads,id',
+            'driver_id' => 'required|exists:drivers,id',
+            'amount' => 'required|numeric|min:1'
+        ]);
+
+        $driver = Driver::findOrFail($validated['driver_id']);
+
+        if ($driver->status !== 'approved') {
+            return response()->json([
+                'message' => 'Only approved drivers can place bids.'
+            ], 403);
+        }
+
+        $load = Load::findOrFail($validated['load_id']);
+
+        if ($load->status !== 'open') {
+            return response()->json([
+                'message' => 'Bidding is closed for this load.'
+            ], 400);
+        }
+
+        $bid = Bid::create($validated);
+
+        return response()->json([
+            'message' => 'Bid placed successfully.',
+            'bid' => $bid
+        ], 201);
+    }
+}
+public function accept($id)
+{
+    $bid = Bid::findOrFail($id);
+
+    $bid->update([
+        'status' => 'accepted'
+    ]);
+
+    $bid->load->update([
+        'status' => 'assigned'
+    ]);
+
+    return response()->json([
+        'message' => 'Bid accepted successfully.',
+        'bid' => $bid
+    ]);
+}
+
