@@ -1,258 +1,56 @@
-class LoadController extends Controller
-{
-    public function index()
-    {
-        return Load::all();
-    }
+<?php
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'pickup_location' => 'required',
-            'delivery_location' => 'required',
-            'business_id' => 'required|exists:businesses,id'
-        ]);
+namespace App\Http\Controllers\Api;
 
-        $load = Load::create($validated);
-
-        return response()->json($load, 201);
-    }
-}
-
-class Driver extends Model
-{
-    protected $fillable = [
-        'user_id',
-        'business_name',
-        'status'
-    ];
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function vehicle()
-    {
-        return $this->hasOne(Vehicle::class);
-    }
-
-    public function bids()
-    {
-        return $this->hasMany(Bid::class);
-    }
-}
-
-// app/Models/Business.php
-
-class Business extends Model
-{
-    protected $fillable = [
-        'name',
-        'status',
-        'category',
-        'address'
-    ];
-
-    public function users()
-    {
-        return $this->hasMany(User::class);
-    }
-
-    public function loads()
-    {
-        return $this->hasMany(Load::class);
-    }
-}
-
-public function up()
-{
-    Schema::create('loads', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('business_id')->constrained()->cascadeOnDelete();
-        $table->string('pickup_location');
-        $table->string('delivery_location');
-        $table->integer('weight')->nullable();
-        $table->string('required_vehicle_type')->nullable();
-        $table->string('status')->default('draft');
-        $table->timestamps();
-    });
-}
-
-
-// app/Http/Controllers/Api/BusinessController.php
-
-use App\Models\Business;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
-class BusinessController extends Controller
-{
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'category' => 'nullable|string',
-            'address' => 'nullable|string'
-        ]);
-
-        $business = Business::create([
-            'name' => $validated['name'],
-            'category' => $validated['category'] ?? null,
-            'address' => $validated['address'] ?? null,
-            'status' => 'pending' // important
-        ]);
-
-        return response()->json([
-            'message' => 'Business registration submitted. Awaiting approval.',
-            'business' => $business
-        ], 201);
-    }
-}
-
-public function approve($id)
-{
-    $business = Business::findOrFail($id);
-
-    $business->update([
-        'status' => 'approved'
-    ]);
-
-    return response()->json([
-        'message' => 'Business approved successfully.',
-        'business' => $business
-    ]);
-}
-
-use App\Models\Driver;
-
-class DriverController extends Controller
-{
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'business_name' => 'nullable|string'
-        ]);
-
-        $driver = Driver::create([
-            'user_id' => $validated['user_id'],
-            'business_name' => $validated['business_name'] ?? null,
-            'status' => 'pending'
-        ]);
-
-        return response()->json([
-            'message' => 'Driver registration submitted.',
-            'driver' => $driver
-        ], 201);
-    }
-
-    public function approve($id)
-    {
-        $driver = Driver::findOrFail($id);
-
-        $driver->update([
-            'status' => 'approved'
-        ]);
-
-        return response()->json([
-            'message' => 'Driver approved successfully.',
-            'driver' => $driver
-        ]);
-    }
-}
-
-use App\Models\Driver;
-
-class DriverController extends Controller
-{
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'business_name' => 'nullable|string'
-        ]);
-
-        $driver = Driver::create([
-            'user_id' => $validated['user_id'],
-            'business_name' => $validated['business_name'] ?? null,
-            'status' => 'pending'
-        ]);
-
-        return response()->json([
-            'message' => 'Driver registration submitted.',
-            'driver' => $driver
-        ], 201);
-    }
-
-    public function approve($id)
-    {
-        $driver = Driver::findOrFail($id);
-
-        $driver->update([
-            'status' => 'approved'
-        ]);
-
-        return response()->json([
-            'message' => 'Driver approved successfully.',
-            'driver' => $driver
-        ]);
-    }
-}
-
 use App\Models\Bid;
-use App\Models\Driver;
-use App\Models\Load;
-use Illuminate\Http\Request;
+use App\Models\Shipment;
 
 class BidController extends Controller
 {
-    public function store(Request $request)
+    // Place Bid (Transporter only)
+    public function store(Request $request, $shipmentId)
     {
+        if ($request->user()->role !== 'transporter') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $shipment = Shipment::findOrFail($shipmentId);
+
+        if ($shipment->status !== 'open') {
+            return response()->json(['message' => 'Shipment not open for bidding'], 400);
+        }
+
         $validated = $request->validate([
-            'load_id' => 'required|exists:loads,id',
-            'driver_id' => 'required|exists:drivers,id',
-            'amount' => 'required|numeric|min:1'
+            'amount' => 'required|numeric',
+            'message' => 'nullable|string'
         ]);
 
-        $driver = Driver::findOrFail($validated['driver_id']);
+        $bid = Bid::create([
+            'shipment_id' => $shipment->id,
+            'company_id' => $request->user()->company_id,
+            'amount' => $validated['amount'],
+            'message' => $validated['message'] ?? null,
+            'status' => 'pending'
+        ]);
 
-        if ($driver->status !== 'approved') {
-            return response()->json([
-                'message' => 'Only approved drivers can place bids.'
-            ], 403);
+        return response()->json($bid, 201);
+    }
+
+    // Accept Bid (Shipper only)
+    public function accept(Request $request, $bidId)
+    {
+        $bid = Bid::findOrFail($bidId);
+        $shipment = $bid->shipment;
+
+        if ($shipment->company_id !== $request->user()->company_id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $load = Load::findOrFail($validated['load_id']);
+        $bid->update(['status' => 'accepted']);
+        $shipment->update(['status' => 'assigned']);
 
-        if ($load->status !== 'open') {
-            return response()->json([
-                'message' => 'Bidding is closed for this load.'
-            ], 400);
-        }
-
-        $bid = Bid::create($validated);
-
-        return response()->json([
-            'message' => 'Bid placed successfully.',
-            'bid' => $bid
-        ], 201);
+        return response()->json(['message' => 'Bid accepted successfully']);
     }
 }
-public function accept($id)
-{
-    $bid = Bid::findOrFail($id);
-
-    $bid->update([
-        'status' => 'accepted'
-    ]);
-
-    $bid->load->update([
-        'status' => 'assigned'
-    ]);
-
-    return response()->json([
-        'message' => 'Bid accepted successfully.',
-        'bid' => $bid
-    ]);
-}
-

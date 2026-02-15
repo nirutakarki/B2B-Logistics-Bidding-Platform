@@ -2,36 +2,51 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\User;
+use App\Models\Company;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    // Register
     public function register(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
             'password' => 'required|min:6',
-            'role' => 'required|in:admin,business,driver'
+            'role' => 'required|in:shipper,transporter',
+            'company_name' => 'required|string',
+            'registration_number' => 'required|string|unique:companies'
+        ]);
+
+        $company = Company::create([
+            'name' => $validated['company_name'],
+            'registration_number' => $validated['registration_number'],
+            'contact_email' => $validated['email'],
+            'is_approved' => false
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'role' => $validated['role']
+            'role' => $validated['role'],
+            'company_id' => $company->id
         ]);
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
+            'message' => 'Registered successfully',
             'token' => $token
-        ]);
+        ], 201);
     }
 
+    // Login
     public function login(Request $request)
     {
         $request->validate([
@@ -41,56 +56,26 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'message' => 'Invalid credentials'
-            ], 401);
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => ['Invalid credentials.']
+            ]);
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
             'token' => $token
         ]);
     }
-}
 
-Route::middleware('auth:sanctum')->group(function () {
+    // Logout
+    public function logout(Request $request)
+    {
+        $request->user()->tokens()->delete();
 
-    Route::post('businesses', [BusinessController::class, 'store']);
-    Route::put('businesses/{id}/approve', [BusinessController::class, 'approve']);
-
-    Route::post('drivers', [DriverController::class, 'store']);
-    Route::put('drivers/{id}/approve', [DriverController::class, 'approve']);
-
-    Route::post('loads', [LoadController::class, 'store']);
-    Route::post('bids', [BidController::class, 'store']);
-    Route::put('bids/{id}/accept', [BidController::class, 'accept']);
-
-});
-
-Route::post('register', [AuthController::class, 'register']);
-Route::post('login', [AuthController::class, 'login']);
-
-// app/Http/Middleware/RoleMiddleware.php
-
-public function handle($request, Closure $next, $role)
-{
-    if (auth()->user()->role !== $role) {
         return response()->json([
-            'message' => 'Unauthorized action.'
-        ], 403);
+            'message' => 'Logged out successfully'
+        ]);
     }
-
-    return $next($request);
 }
-
-Route::middleware(['auth:sanctum', 'role:admin'])
-    ->put('businesses/{id}/approve', [BusinessController::class, 'approve']);
-
-Route::middleware(['auth:sanctum', 'role:business'])
-    ->post('loads', [LoadController::class, 'store']);
-
-Route::middleware(['auth:sanctum', 'role:driver'])
-    ->post('bids', [BidController::class, 'store']);
