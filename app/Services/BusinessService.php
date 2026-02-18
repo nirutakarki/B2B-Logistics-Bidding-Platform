@@ -37,7 +37,6 @@ class BusinessService
             $user->business_id = $business->id;
             $user->save();
 
-            // Assign role based on business type
             if ($business->type === BusinessType::Shipper) {
                 $user->assignRole('shipper_user');
             }
@@ -48,7 +47,9 @@ class BusinessService
 
             $this->activityLogger->log(
                 'business_created',
-                "Business {$business->name} created and pending review."
+                "Business {$business->name} created and pending review.",
+                $business,
+                $user
             );
 
             return $business;

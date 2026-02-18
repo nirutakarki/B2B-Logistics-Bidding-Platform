@@ -24,9 +24,9 @@ class Bid extends Model
         ];
     }
 
-    public function load()
+    public function shipment()
     {
-        return $this->belongsTo(Load::class);
+        return $this->belongsTo(Load::class, 'load_id');
     }
 
     public function driverBusiness()
