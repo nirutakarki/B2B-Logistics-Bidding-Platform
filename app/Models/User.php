@@ -73,5 +73,34 @@ class User extends Authenticatable
         return $this->belongsTo(Business::class);
     }
 
+    // Support Tickets - tickets raised by this user
+    public function raisedTickets()
+    {
+        return $this->hasMany(SupportTicket::class, 'raised_by_user_id');
+    }
+
+    // Support Tickets - tickets assigned to this user (for support agents)
+    public function assignedTickets()
+    {
+        return $this->hasMany(SupportTicket::class, 'assigned_to_user_id');
+    }
+
+    // Activity Logs
+    public function activityLogs()
+    {
+        return $this->hasMany(ActivityLog::class);
+    }
+
+    // Approval Logs
+    public function approvals()
+    {
+        return $this->hasMany(ApprovalLog::class, 'approved_by');
+    }
+
+    // Helper method - check if user is support agent
+    public function isSupportAgent(): bool
+    {
+        return $this->hasRole('support_agent') || $this->hasRole('platform_admin');
+    }
 }
 

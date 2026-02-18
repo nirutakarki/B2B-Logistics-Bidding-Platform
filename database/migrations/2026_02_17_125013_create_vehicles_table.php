@@ -13,7 +13,12 @@ return new class extends Migration
     {
         Schema::create('vehicles', function (Blueprint $table) {
             $table->id();
-            // id, business_id, registration_number, vehicle_type, capacity, status
+            
+            $table->foreignId('business_id')->constrained()->cascadeOnDelete();
+            $table->string('registration_number')->unique();
+            $table->string('vehicle_type');
+            $table->decimal('capacity', 10, 2);
+            $table->string('status')->default('active');
 
             $table->timestamps();
         });
