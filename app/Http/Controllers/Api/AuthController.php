@@ -3,32 +3,47 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\RegisterRequest;
 use App\Models\User;
+use App\Services\BusinessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\JsonResponse;
 
 class AuthController extends Controller
 {
-    public function register(Request $request): JsonResponse
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|unique:users',
-            'password' => 'required|string|min:6'
-        ]);
+    protected BusinessService $businessService;
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => $request->password, // auto hashed via cast
-        ]);
+    public function __construct(BusinessService $businessService)
+    {
+        $this->businessService = $businessService;
+    }
+
+    public function register(RegisterRequest $request): JsonResponse
+    {
+        $result = $this->businessService->registerUserWithBusiness($request->validated());
+        
+        $user = $result['user'];
+        $business = $result['business'];
 
         $token = $user->createToken('api_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'User registered successfully.',
-            'token' => $token
+            'message' => 'Registration successful. Your business is pending approval.',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'business_id' => $user->business_id,
+            ],
+            'business' => [
+                'id' => $business->id,
+                'name' => $business->name,
+                'type' => $business->type,
+                'status' => $business->status,
+                'address' => $business->address,
+            ],
+            'token' => $token,
         ], 201);
     }
 
