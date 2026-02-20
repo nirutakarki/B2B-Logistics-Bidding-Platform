@@ -20,7 +20,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/businesses/{business}/suspend', [AdminBusinessController::class, 'suspend']);
     });
 
-    // Vehicle Management (Driver businesses only)
     Route::middleware('business.approved')->group(function () {
         Route::get('/vehicles', [VehicleController::class, 'index']);
         Route::post('/vehicles', [VehicleController::class, 'store']);
