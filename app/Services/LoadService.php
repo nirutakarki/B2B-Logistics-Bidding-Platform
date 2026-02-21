@@ -6,17 +6,18 @@ use App\Models\Load;
 use App\Models\Business;
 use App\Shared\Enums\LoadStatus;
 use App\Shared\Enums\BusinessType;
+use App\Shared\Services\ActivityLogger;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class LoadService
 {
-    /**
-     * Create a new load for a shipper business
-     */
+    public function __construct(
+        private ActivityLogger $activityLogger
+    ) {}
+
     public function createLoad(Business $business, array $data): Load
     {
-        // Ensure only shippers can create loads
         if ($business->type !== BusinessType::Shipper) {
             throw new \Exception('Only shipper businesses can post loads');
         }
@@ -25,66 +26,52 @@ class LoadService
             $load = new Load();
             $load->business_id = $business->id;
             
-            // Pickup details
             $load->pickup_address = $data['pickup_address'];
             $load->pickup_city = $data['pickup_city'];
             $load->pickup_state = $data['pickup_state'];
             $load->pickup_zip = $data['pickup_zip'];
             $load->pickup_country = $data['pickup_country'] ?? 'USA';
             
-            // Delivery details
             $load->delivery_address = $data['delivery_address'];
             $load->delivery_city = $data['delivery_city'];
             $load->delivery_state = $data['delivery_state'];
             $load->delivery_zip = $data['delivery_zip'];
             $load->delivery_country = $data['delivery_country'] ?? 'USA';
             
-            // Dates
             $load->pickup_date = $data['pickup_date'];
             $load->delivery_date = $data['delivery_date'];
             
-            // Cargo details
             $load->cargo_type = $data['cargo_type'];
             $load->cargo_weight_kg = $data['cargo_weight_kg'];
             $load->cargo_description = $data['cargo_description'] ?? null;
             
-            // Requirements
             $load->vehicle_type_required = $data['vehicle_type_required'];
             $load->price = $data['price'];
             
-            // Optional fields
             $load->special_requirements = $data['special_requirements'] ?? null;
             $load->distance_km = $data['distance_km'] ?? null;
             
-            // Set status (draft or open)
             $load->status = $data['status'] ?? LoadStatus::Open;
             
             $load->save();
             
-            // Log activity
-            ActivityLogger::log(
+            $this->activityLogger->log(
                 'load_created',
                 'Load created: ' . $load->pickup_city . ' to ' . $load->delivery_city,
-                $load,
-                $business
+                $load
             );
             
             return $load;
         });
     }
 
-    /**
-     * Update an existing load
-     */
     public function updateLoad(Load $load, array $data): Load
     {
-        // Only allow updates if load is not assigned or in transit
-        if (in_array($load->status, [LoadStatus::Assigned, LoadStatus::InTransit, LoadStatus::Delivered])) {
+        if (in_array($load->status, [LoadStatus::Assigned, LoadStatus::InProgress, LoadStatus::Completed])) {
             throw new \Exception('Cannot update load in current status: ' . $load->status->value);
         }
 
         DB::transaction(function () use ($load, $data) {
-            // Update only provided fields
             if (isset($data['pickup_address'])) $load->pickup_address = $data['pickup_address'];
             if (isset($data['pickup_city'])) $load->pickup_city = $data['pickup_city'];
             if (isset($data['pickup_state'])) $load->pickup_state = $data['pickup_state'];
@@ -113,47 +100,39 @@ class LoadService
             
             $load->save();
             
-            ActivityLogger::log(
+            $this->activityLogger->log(
                 'load_updated',
                 'Load updated',
-                $load,
-                $load->business
+                $load
             );
         });
 
         return $load->fresh();
     }
 
-    /**
-     * Change load status
-     */
+
     public function changeLoadStatus(Load $load, LoadStatus $newStatus): Load
     {
         $oldStatus = $load->status;
         
-        // Validate status transitions
         $this->validateStatusTransition($oldStatus, $newStatus);
         
         $load->status = $newStatus;
         $load->save();
         
-        ActivityLogger::log(
+        $this->activityLogger->log(
             'load_status_changed',
             "Load status changed from {$oldStatus->value} to {$newStatus->value}",
-            $load,
-            $load->business
+            $load
         );
         
         return $load;
     }
 
-    /**
-     * Cancel a load
-     */
+
     public function cancelLoad(Load $load, ?string $reason = null): Load
     {
-        // Cannot cancel if already delivered or in transit
-        if (in_array($load->status, [LoadStatus::InTransit, LoadStatus::Delivered])) {
+        if (in_array($load->status, [LoadStatus::InProgress, LoadStatus::Completed])) {
             throw new \Exception('Cannot cancel load in current status');
         }
 
@@ -164,52 +143,43 @@ class LoadService
         }
         $load->save();
         
-        ActivityLogger::log(
+        $this->activityLogger->log(
             'load_cancelled',
             'Load cancelled' . ($reason ? ": {$reason}" : ''),
-            $load,
-            $load->business
+            $load
         );
         
         return $load;
     }
 
-    /**
-     * Delete a load
-     */
+  
     public function deleteLoad(Load $load): void
     {
-        // Can only delete draft or cancelled loads
         if (!in_array($load->status, [LoadStatus::Draft, LoadStatus::Cancelled])) {
             throw new \Exception('Can only delete draft or cancelled loads');
         }
 
-        // Check if load has bids
         if ($load->bids()->count() > 0) {
             throw new \Exception('Cannot delete load with existing bids');
         }
 
-        ActivityLogger::log(
+        $this->activityLogger->log(
             'load_deleted',
             'Load deleted: ' . $load->pickup_city . ' to ' . $load->delivery_city,
-            null,
-            $load->business
+            null
         );
 
         $load->delete();
     }
 
-    /**
-     * Validate status transitions
-     */
     private function validateStatusTransition(LoadStatus $from, LoadStatus $to): void
     {
         $validTransitions = [
             LoadStatus::Draft->value => [LoadStatus::Open->value, LoadStatus::Cancelled->value],
             LoadStatus::Open->value => [LoadStatus::Assigned->value, LoadStatus::Cancelled->value],
-            LoadStatus::Assigned->value => [LoadStatus::InTransit->value, LoadStatus::Cancelled->value],
-            LoadStatus::InTransit->value => [LoadStatus::Delivered->value],
-            LoadStatus::Delivered->value => [],
+            LoadStatus::Assigned->value => [LoadStatus::InProgress->value, LoadStatus::Cancelled->value],
+            LoadStatus::InProgress->value => [LoadStatus::Completed->value],
+            LoadStatus::Completed->value => [],
             LoadStatus::Cancelled->value => [],
         ];
 
