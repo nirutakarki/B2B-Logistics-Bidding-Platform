@@ -4,7 +4,8 @@ namespace App\Shared\Enums;
 
 enum VehicleStatus: string
 {
-    case Active = 'active';
-    case Inactive = 'inactive';
-    case Maintenance = 'maintenance';
+    case Available = 'available';
+    case InTransit = 'in_transit';
+    case InMaintenance = 'in_maintenance';
+    case OutOfService = 'out_of_service';
 }
