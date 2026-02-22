@@ -32,7 +32,7 @@ class VehicleService
             'registration_number' => $data['registration_number'],
             'vehicle_type' => $data['vehicle_type'],
             'capacity' => $data['capacity'],
-            'status' => VehicleStatus::Active,
+            'status' => VehicleStatus::Available,
         ]);
 
         $this->activityLogger->log(
