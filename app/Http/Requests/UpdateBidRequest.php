@@ -6,22 +6,17 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateBidRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
+
     public function authorize(): bool
     {
         $bid = $this->route('bid');
         
-        // User must own the bid
         return $this->user() && 
                $this->user()->business && 
                $bid->driver_business_id === $this->user()->business->id;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     */
+
     public function rules(): array
     {
         return [
@@ -31,9 +26,6 @@ class UpdateBidRequest extends FormRequest
         ];
     }
 
-    /**
-     * Get custom messages for validator errors.
-     */
     public function messages(): array
     {
         return [
@@ -43,9 +35,7 @@ class UpdateBidRequest extends FormRequest
         ];
     }
 
-    /**
-     * Get custom authorization message
-     */
+
     public function failedAuthorization()
     {
         abort(403, 'You can only update your own bids');

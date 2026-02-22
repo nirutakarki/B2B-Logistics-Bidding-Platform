@@ -7,12 +7,9 @@ use App\Shared\Enums\BusinessType;
 
 class StoreBidRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
+
     public function authorize(): bool
     {
-        // User must be authenticated and have an approved driver business
         if (!$this->user() || !$this->user()->business) {
             return false;
         }
@@ -20,9 +17,7 @@ class StoreBidRequest extends FormRequest
         return $this->user()->business->type === BusinessType::Driver;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     */
+
     public function rules(): array
     {
         return [
@@ -32,9 +27,6 @@ class StoreBidRequest extends FormRequest
         ];
     }
 
-    /**
-     * Get custom messages for validator errors.
-     */
     public function messages(): array
     {
         return [
@@ -45,9 +37,6 @@ class StoreBidRequest extends FormRequest
         ];
     }
 
-    /**
-     * Get custom authorization message
-     */
     public function failedAuthorization()
     {
         abort(403, 'Only driver businesses can place bids');
