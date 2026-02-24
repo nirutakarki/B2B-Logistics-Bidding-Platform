@@ -271,21 +271,16 @@ class ShipmentController extends Controller
         }
     }
 
-    /**
-     * List active shipments for the authenticated user's business
-     */
+ 
     public function index(Request $request): JsonResponse
     {
         $business = $request->user()->business;
         $businessType = $business->type->value;
         
-        // Determine query based on business type
         if ($businessType === 'shipper') {
-            // Shippers see their loads that are assigned or in progress
             $query = Load::where('business_id', $business->id)
                 ->whereIn('status', [LoadStatus::Assigned, LoadStatus::InProgress, LoadStatus::Completed]);
         } else {
-            // Drivers see loads assigned to them
             $query = Load::where('assigned_driver_id', $business->id)
                 ->whereIn('status', [LoadStatus::Assigned, LoadStatus::InProgress, LoadStatus::Completed]);
         }
@@ -308,13 +303,11 @@ class ShipmentController extends Controller
                 ];
 
                 if ($businessType === 'shipper') {
-                    // Shipper view - show driver details
                     $data['driver'] = $load->assignedDriver ? [
                         'id' => $load->assignedDriver->id,
                         'name' => $load->assignedDriver->name,
                     ] : null;
                 } else {
-                    // Driver view - show shipper details
                     $data['shipper'] = [
                         'id' => $load->business->id,
                         'name' => $load->business->name,
