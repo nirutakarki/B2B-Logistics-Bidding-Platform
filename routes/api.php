@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\BusinessController as AdminBusinessController
 use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\LoadController;
 use App\Http\Controllers\Api\BidController;
+use App\Http\Controllers\Api\ShipmentController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -50,6 +51,16 @@ Route::middleware('auth:sanctum')->group(function () {
         
         Route::patch('/bids/{bid}/accept', [BidController::class, 'accept']);
         Route::patch('/bids/{bid}/reject', [BidController::class, 'reject']);
+        
+        // Shipment tracking routes
+        Route::get('/shipments', [ShipmentController::class, 'index']);
+        Route::post('/loads/{load}/shipment/start', [ShipmentController::class, 'start']);
+        Route::patch('/loads/{load}/shipment/pickup', [ShipmentController::class, 'markPickupCompleted']);
+        Route::post('/loads/{load}/shipment/updates', [ShipmentController::class, 'addTrackingUpdate']);
+        Route::patch('/loads/{load}/shipment/complete', [ShipmentController::class, 'completeDelivery']);
+        Route::get('/loads/{load}/shipment', [ShipmentController::class, 'show']);
+        Route::get('/loads/{load}/shipment/timeline', [ShipmentController::class, 'timeline']);
+        Route::patch('/loads/{load}/shipment/cancel', [ShipmentController::class, 'cancel']);
     });
 });
 
