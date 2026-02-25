@@ -28,3 +28,4 @@ class UpdateSupportTicketRequest extends FormRequest
         ];
     }
 }
+

@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class ResolveSupportTicketRequest extends FormRequest
 {
+
     public function authorize(): bool
     {
         // Only platform admins can resolve tickets

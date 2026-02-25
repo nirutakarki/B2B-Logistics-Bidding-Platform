@@ -36,3 +36,4 @@ class UpdateVehicleRequest extends FormRequest
         ];
     }
 }
+

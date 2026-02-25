@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\LoadController;
 use App\Http\Controllers\Api\BidController;
 use App\Http\Controllers\Api\ShipmentController;
+use App\Http\Controllers\Api\SupportTicketController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -21,6 +22,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/businesses/{business}/approve', [AdminBusinessController::class, 'approve']);
         Route::patch('/businesses/{business}/reject', [AdminBusinessController::class, 'reject']);
         Route::patch('/businesses/{business}/suspend', [AdminBusinessController::class, 'suspend']);
+        
+        // Admin support ticket management
+        Route::get('/support-tickets/statistics', [SupportTicketController::class, 'statistics']);
+        Route::patch('/support-tickets/{ticket}/assign', [SupportTicketController::class, 'assign']);
+        Route::patch('/support-tickets/{ticket}/resolve', [SupportTicketController::class, 'resolve']);
     });
 
     Route::middleware('business.approved')->group(function () {
@@ -60,6 +66,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/loads/{load}/shipment', [ShipmentController::class, 'show']);
         Route::get('/loads/{load}/shipment/timeline', [ShipmentController::class, 'timeline']);
         Route::patch('/loads/{load}/shipment/cancel', [ShipmentController::class, 'cancel']);
+        
+        // Support ticket routes (for authenticated business users)
+        Route::get('/support-tickets', [SupportTicketController::class, 'index']);
+        Route::post('/support-tickets', [SupportTicketController::class, 'store']);
+        Route::get('/support-tickets/{ticket}', [SupportTicketController::class, 'show']);
+        Route::patch('/support-tickets/{ticket}', [SupportTicketController::class, 'update']);
+        Route::patch('/support-tickets/{ticket}/close', [SupportTicketController::class, 'close']);
+        Route::patch('/support-tickets/{ticket}/reopen', [SupportTicketController::class, 'reopen']);
     });
 });
 
