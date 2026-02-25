@@ -15,17 +15,12 @@ class ShipmentService
         private ActivityLogger $activityLogger
     ) {}
 
-    /**
-     * Start shipment - driver marks load as in progress
-     */
     public function startShipment(Load $load, Business $driverBusiness, ?string $notes = null): Load
     {
-        // Validate driver owns this load
         if ($load->assigned_driver_id !== $driverBusiness->id) {
             throw new \Exception('Only the assigned driver can start this shipment');
         }
 
-        // Can only start from assigned status
         if ($load->status !== LoadStatus::Assigned) {
             throw new \Exception('Can only start shipment from assigned status. Current: ' . $load->status->value);
         }
@@ -34,7 +29,6 @@ class ShipmentService
             $load->status = LoadStatus::InProgress;
             $load->save();
 
-            // Update vehicle status if assigned
             $acceptedBid = $load->bids()->where('status', 'accepted')->first();
             if ($acceptedBid && $acceptedBid->vehicle_id) {
                 $vehicle = $acceptedBid->vehicle;
@@ -52,17 +46,12 @@ class ShipmentService
         });
     }
 
-    /**
-     * Mark pickup completed
-     */
     public function markPickupCompleted(Load $load, Business $driverBusiness, ?string $notes = null): Load
     {
-        // Validate driver owns this load
         if ($load->assigned_driver_id !== $driverBusiness->id) {
             throw new \Exception('Only the assigned driver can update this shipment');
         }
 
-        // Must be in progress
         if ($load->status !== LoadStatus::InProgress) {
             throw new \Exception('Shipment must be in progress to mark pickup completed');
         }
@@ -76,17 +65,12 @@ class ShipmentService
         return $load->fresh();
     }
 
-    /**
-     * Complete delivery - mark shipment as delivered
-     */
     public function completeDelivery(Load $load, Business $driverBusiness, array $data = []): Load
     {
-        // Validate driver owns this load
         if ($load->assigned_driver_id !== $driverBusiness->id) {
             throw new \Exception('Only the assigned driver can complete this delivery');
         }
 
-        // Must be in progress
         if ($load->status !== LoadStatus::InProgress) {
             throw new \Exception('Shipment must be in progress to complete delivery. Current: ' . $load->status->value);
         }
@@ -94,7 +78,6 @@ class ShipmentService
         return DB::transaction(function () use ($load, $data) {
             $load->status = LoadStatus::Completed;
             
-            // Store delivery notes if provided
             if (isset($data['delivery_notes'])) {
                 $load->special_requirements = ($load->special_requirements ? $load->special_requirements . "\n\n" : '') 
                     . "Delivery Notes: {$data['delivery_notes']}";
@@ -102,7 +85,6 @@ class ShipmentService
             
             $load->save();
 
-            // Update vehicle status back to available
             $acceptedBid = $load->bids()->where('status', 'accepted')->first();
             if ($acceptedBid && $acceptedBid->vehicle_id) {
                 $vehicle = $acceptedBid->vehicle;
@@ -120,17 +102,12 @@ class ShipmentService
         });
     }
 
-    /**
-     * Add tracking update - driver provides location/status update
-     */
     public function addTrackingUpdate(Load $load, Business $driverBusiness, array $data): void
     {
-        // Validate driver owns this load
         if ($load->assigned_driver_id !== $driverBusiness->id) {
             throw new \Exception('Only the assigned driver can add tracking updates');
         }
 
-        // Must be in progress
         if ($load->status !== LoadStatus::InProgress) {
             throw new \Exception('Can only add tracking updates for shipments in progress');
         }
@@ -145,9 +122,6 @@ class ShipmentService
         );
     }
 
-    /**
-     * Get shipment timeline (activity logs for a load)
-     */
     public function getShipmentTimeline(Load $load): array
     {
         $activities = $load->activityLogs()
@@ -171,12 +145,8 @@ class ShipmentService
         })->toArray();
     }
 
-    /**
-     * Cancel shipment (if issues arise)
-     */
     public function cancelShipment(Load $load, Business $business, string $reason): Load
     {
-        // Either shipper or assigned driver can cancel
         $canCancel = $load->business_id === $business->id || 
                      $load->assigned_driver_id === $business->id;
 
@@ -184,7 +154,6 @@ class ShipmentService
             throw new \Exception('Only the shipper or assigned driver can cancel this shipment');
         }
 
-        // Can only cancel if assigned or in progress
         if (!in_array($load->status, [LoadStatus::Assigned, LoadStatus::InProgress])) {
             throw new \Exception('Cannot cancel shipment in current status: ' . $load->status->value);
         }
@@ -196,7 +165,6 @@ class ShipmentService
                 . "Cancellation reason: {$reason}";
             $load->save();
 
-            // Free up vehicle if assigned
             $acceptedBid = $load->bids()->where('status', 'accepted')->first();
             if ($acceptedBid && $acceptedBid->vehicle_id) {
                 $vehicle = $acceptedBid->vehicle;

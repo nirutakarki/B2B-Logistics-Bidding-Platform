@@ -52,7 +52,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/bids/{bid}/accept', [BidController::class, 'accept']);
         Route::patch('/bids/{bid}/reject', [BidController::class, 'reject']);
         
-        // Shipment tracking routes
         Route::get('/shipments', [ShipmentController::class, 'index']);
         Route::post('/loads/{load}/shipment/start', [ShipmentController::class, 'start']);
         Route::patch('/loads/{load}/shipment/pickup', [ShipmentController::class, 'markPickupCompleted']);
