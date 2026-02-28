@@ -213,7 +213,6 @@ class SupportTicketController extends Controller
     {
         $user = $request->user();
         
-        // User can close if they created it OR they are admin
         $canClose = $ticket->raised_by_user_id === $user->id || 
                     $user->hasRole('platform_admin');
         
@@ -243,9 +242,6 @@ class SupportTicketController extends Controller
         ]);
     }
 
-    /**
-     * Reopen a closed ticket (ticket creator only)
-     */
     public function reopen(Request $request, SupportTicket $ticket): JsonResponse
     {
         $user = $request->user();
@@ -277,9 +273,6 @@ class SupportTicketController extends Controller
         ]);
     }
 
-    /**
-     * Get statistics (admin only)
-     */
     public function statistics(): JsonResponse
     {
         $stats = [

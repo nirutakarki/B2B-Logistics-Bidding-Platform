@@ -13,18 +13,13 @@ use Illuminate\Http\Request;
 
 class RatingController extends Controller
 {
-    /**
-     * Create a rating for a completed load
-     */
     public function store(CreateRatingRequest $request, Load $load): JsonResponse
     {
         $business = $request->user()->business;
         
-        // Determine who is being rated
         $isShipper = $load->business_id === $business->id;
         $ratedBusinessId = $isShipper ? $load->assigned_driver_id : $load->business_id;
         
-        // Check if rating already exists
         $existingRating = Rating::where([
             'rated_by_business_id' => $business->id,
             'rated_business_id' => $ratedBusinessId,
@@ -71,9 +66,6 @@ class RatingController extends Controller
         ], 201);
     }
 
-    /**
-     * Get ratings for a specific business (public profile)
-     */
     public function businessRatings(Business $business): JsonResponse
     {
         $ratings = Rating::where('rated_business_id', $business->id)
@@ -101,7 +93,6 @@ class RatingController extends Controller
         $averageRating = Rating::where('rated_business_id', $business->id)->avg('rating');
         $totalRatings = Rating::where('rated_business_id', $business->id)->count();
         
-        // Rating distribution
         $distribution = [
             '5_stars' => Rating::where('rated_business_id', $business->id)->where('rating', 5)->count(),
             '4_stars' => Rating::where('rated_business_id', $business->id)->where('rating', 4)->count(),
@@ -125,9 +116,6 @@ class RatingController extends Controller
         ]);
     }
 
-    /**
-     * Get ratings given by the authenticated user's business
-     */
     public function myRatings(Request $request): JsonResponse
     {
         $business = $request->user()->business;
@@ -161,14 +149,10 @@ class RatingController extends Controller
         ]);
     }
 
-    /**
-     * Get rating for a specific load
-     */
     public function loadRating(Request $request, Load $load): JsonResponse
     {
         $business = $request->user()->business;
         
-        // User can view rating if they were involved in the load
         $canView = $load->business_id === $business->id || 
                    $load->assigned_driver_id === $business->id;
         
@@ -200,7 +184,6 @@ class RatingController extends Controller
                 ];
             });
         
-        // Determine if current user can still rate this load
         $alreadyRated = Rating::where([
             'rated_by_business_id' => $business->id,
             'load_id' => $load->id,
@@ -220,9 +203,6 @@ class RatingController extends Controller
         ]);
     }
 
-    /**
-     * Update a rating (edit your own rating)
-     */
     public function update(Request $request, Rating $rating): JsonResponse
     {
         $business = $request->user()->business;
@@ -251,9 +231,6 @@ class RatingController extends Controller
         ]);
     }
 
-    /**
-     * Delete a rating (remove your own rating)
-     */
     public function destroy(Request $request, Rating $rating): JsonResponse
     {
         $business = $request->user()->business;
