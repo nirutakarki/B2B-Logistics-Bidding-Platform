@@ -14,28 +14,21 @@ use Illuminate\Http\Request;
 
 class SupportTicketController extends Controller
 {
-    /**
-     * List support tickets
-     * - Users see their own tickets
-     * - Admins see all tickets
-     */
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
         
         $query = SupportTicket::with(['raisedBy.business', 'assignedTo']);
         
-        // Non-admins only see their own tickets
         if (!$user->hasRole('platform_admin')) {
             $query->where('raised_by_user_id', $user->id);
         }
         
-        // Filter by status
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
         
-        // Filter by priority
         if ($request->has('priority')) {
             $query->where('priority', $request->priority);
         }
@@ -69,9 +62,6 @@ class SupportTicketController extends Controller
         ]);
     }
 
-    /**
-     * Create a new support ticket
-     */
     public function store(CreateSupportTicketRequest $request): JsonResponse
     {
         $ticket = SupportTicket::create([
@@ -105,14 +95,10 @@ class SupportTicketController extends Controller
         ], 201);
     }
 
-    /**
-     * View a specific ticket
-     */
     public function show(Request $request, SupportTicket $ticket): JsonResponse
     {
         $user = $request->user();
         
-        // User can view if they created it OR they are admin
         $canView = $ticket->raised_by_user_id === $user->id || 
                    $user->hasRole('platform_admin');
         
@@ -152,12 +138,8 @@ class SupportTicketController extends Controller
         ]);
     }
 
-    /**
-     * Update ticket (by ticket creator)
-     */
     public function update(UpdateSupportTicketRequest $request, SupportTicket $ticket): JsonResponse
     {
-        // Only allow updates if ticket is still open
         if ($ticket->status !== SupportTicketStatus::Open) {
             return response()->json([
                 'message' => 'Only open tickets can be updated',
@@ -178,9 +160,6 @@ class SupportTicketController extends Controller
         ]);
     }
 
-    /**
-     * Assign ticket to admin (admin only)
-     */
     public function assign(Request $request, SupportTicket $ticket): JsonResponse
     {
         $request->validate([
@@ -207,9 +186,6 @@ class SupportTicketController extends Controller
         ]);
     }
 
-    /**
-     * Resolve ticket (admin only)
-     */
     public function resolve(ResolveSupportTicketRequest $request, SupportTicket $ticket): JsonResponse
     {
         if ($ticket->status === SupportTicketStatus::Resolved || 
@@ -222,10 +198,7 @@ class SupportTicketController extends Controller
         $ticket->update([
             'status' => SupportTicketStatus::Resolved,
         ]);
-        
-        // Here you could store resolution_notes in a separate table or add a field
-        // For now, we'll just change the status
-        
+
         return response()->json([
             'message' => 'Ticket resolved successfully',
             'ticket' => [
@@ -236,9 +209,6 @@ class SupportTicketController extends Controller
         ]);
     }
 
-    /**
-     * Close ticket (admin or ticket creator)
-     */
     public function close(Request $request, SupportTicket $ticket): JsonResponse
     {
         $user = $request->user();

@@ -35,7 +35,6 @@ class Business extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    // Vehicles (only for driver businesses)
     public function vehicles()
     {
         return $this->hasMany(Vehicle::class);
@@ -63,5 +62,29 @@ class Business extends Model
     public function approvalLogs()
     {
         return $this->morphMany(ApprovalLog::class, 'approvable');
+    }
+
+    // Ratings given by this business
+    public function ratingsGiven()
+    {
+        return $this->hasMany(Rating::class, 'rated_by_business_id');
+    }
+
+    // Ratings received by this business
+    public function ratingsReceived()
+    {
+        return $this->hasMany(Rating::class, 'rated_business_id');
+    }
+
+    // Get average rating for this business
+    public function averageRating()
+    {
+        return $this->ratingsReceived()->avg('rating');
+    }
+
+    // Get total number of ratings
+    public function totalRatings()
+    {
+        return $this->ratingsReceived()->count();
     }
 }
