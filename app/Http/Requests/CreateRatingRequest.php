@@ -16,7 +16,6 @@ class CreateRatingRequest extends FormRequest
             return false;
         }
         
-        // User must be either the shipper or the assigned driver
         $isShipper = $load->business_id === $business->id;
         $isDriver = $load->assigned_driver_id === $business->id;
         
