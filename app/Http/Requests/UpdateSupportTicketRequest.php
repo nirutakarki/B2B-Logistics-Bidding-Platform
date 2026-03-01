@@ -8,7 +8,6 @@ class UpdateSupportTicketRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // User can update their own ticket
         $ticket = $this->route('ticket');
         return $ticket && $ticket->raised_by_user_id === $this->user()->id;
     }
