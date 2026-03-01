@@ -12,7 +12,6 @@ class UpdateVehicleRequest extends FormRequest
     {
         $vehicle = $this->route('vehicle');
         
-        // User must own the vehicle (via their business)
         return $this->user() 
             && $this->user()->business 
             && $vehicle->business_id === $this->user()->business_id;
